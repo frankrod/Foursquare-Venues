@@ -38,7 +38,12 @@ module.exports.routes = {
 
   'GET /venues' : {
       controller: 'FoursquareController',
-      action: 'allvenues'
+      action: 'allVenues'
+  },
+
+  'GET /explore/venues' : {
+      controller: 'FoursquareController',
+      action: 'getAndSaveVenues'
   },
 
   'GET /venue/:venueId' : {

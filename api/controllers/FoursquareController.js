@@ -11,7 +11,7 @@ var excel = require('node-excel-export');
 
 module.exports = {
 
-	allvenues: function(request, response) {
+	getAndSaveVenues: function(request, response) {
 
 		var allVenues = [];
 
@@ -26,7 +26,7 @@ module.exports = {
 			if (error) {
 				return response.json(500, data.meta.errorType);
 			}
-			
+
 			var items = data.response.groups[0].items;
 
 			async.each(items, function(item, callback) {
@@ -89,6 +89,21 @@ module.exports = {
 				})
 			});
 
+		});
+	},
+
+	allVenues: function(request, response, next) {
+		var offset = request.query.offset;
+
+		foursquare.venues.explore({
+			near: 'city,new york',
+			limit: 10,
+			offset: offset
+		}, function(error, data) {
+			if (error) {
+				return response.badRequest(error);
+			}
+			response.json(200, data);
 		});
 	},
 
