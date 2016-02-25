@@ -64,7 +64,10 @@ module.exports.connections = {
     // password: 'password',
     database: 'foursquareDB'
   },
-
+  production: {
+      adapter: 'sails-mongo',
+      url: process.env.MONGOLAB_URI
+  }
   /***************************************************************************
   *                                                                          *
   * PostgreSQL is another officially supported relational database.          *
