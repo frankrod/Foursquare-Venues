@@ -12,6 +12,87 @@ var excel = require('node-excel-export');
 module.exports = {
 
 	allvenues: function(request, response) {
+
+		var allVenues = [];
+
+		var offset = request.query.offset;
+		var near = request.query.near;
+
+		foursquare.venues.explore({
+			near: 'city,new york',
+			limit: 50,
+			offset: offset
+		}, function(error, data) {
+			if (error) {
+				return response.json(500, data.meta.errorType);
+			}
+			
+			var items = data.response.groups[0].items;
+
+			async.each(items, function(item, callback) {
+
+				foursquare.venues.venue(item.venue.id, function(error, venueData) {
+					if (error) {
+						return response.json(500, venueData.meta.errorType);
+					}
+					var venuesObject = {};
+					var hours = [];
+					var hoursObj = {};
+
+					if (typeof venueData.response.venue.hours != "undefined") {
+						var timeframes = venueData.response.venue.hours.timeframes
+						timeframes.forEach(function(timeframe) {
+							var daysOpen = timeframe.days;
+							var open = timeframe.open[0].renderedTime;
+							hoursObj[daysOpen] = open;
+							hours.push(hoursObj);
+						})
+					}
+					var hoursToJson = JSON.stringify(hours);
+
+					if (typeof item.venue.price !== 'undefined') {
+						venuesObject = {
+							venue_name: item.venue.name,
+							venue_category: item.venue.categories[0].name,
+							venue_hours: hoursToJson,
+							venue_price: item.venue.price.message,
+							venue_adress: item.venue.location.formattedAddress,
+							venue_tips: item.tips[0].text
+						};
+						allVenues.push(venuesObject);
+					} else {
+						venuesObject = {
+							venue_name: item.venue.name,
+							venue_category: item.venue.categories[0].name,
+							venue_hours: hoursToJson,
+							venue_price: '-------',
+							venue_adress: item.venue.location.formattedAddress,
+							venue_tips: item.tips[0].text
+						};
+						allVenues.push(venuesObject);
+					}
+					callback();
+
+				})
+			}, function(err) {
+				async.each(allVenues, function(venue, allVenuesCallback) {
+					Venue.findOrCreate({
+						venue_name: venue.venue_name
+					}, venue).exec(function(error, venueCreated) {
+						allVenuesCallback();
+					})
+				}, function(err) {
+					if (err) {
+						return response.json(500, err);
+					}
+					response.json(200, 'Venues created');
+				})
+			});
+
+		});
+	},
+
+	excelWithVenues: function(request, response) {
 		// You can define styles as json object
 		// More info: https://github.com/protobi/js-xlsx#cell-styles
 		var styles = {
@@ -70,88 +151,23 @@ module.exports = {
 				width: '160'
 			}
 		};
-		var dataset = [];
-
-		var offset = request.query.offset;
-
-    
-
-		foursquare.venues.explore({
-			near: 'city,new york',
-			limit: 50,
-			offset: offset
-		}, function(error, data) {
-			if (error) {
-				return response.badRequest(error);
-			}
-			// sails.log(data);
-
-			// response.json(200, data);
-			var items = data.response.groups[0].items;
-
-			async.each(items, function(item, callback) {
-
-				foursquare.venues.venue(item.venue.id, function(error, venueData) {
-					if (error) {
-						return response.badRequest(error);
+		Venue.find().exec(function(error, venues) {
+			var report = excel.buildExport(
+				[ // <- Notice that this is an array. Pass multiple sheets to create multi sheet report
+					{
+						name: 'Venues', // <- Specify sheet name (optional)
+						specification: specification, // <- Report specification
+						data: venues // <-- Report data
 					}
-					var venuesObject = {};
-					var hours = [];
-					var hoursObj = {};
+				]
+			);
+			response.attachment('venues.xlsx');
+			response.send(report);
+		})
 
-					if (typeof venueData.response.venue.hours != "undefined") {
-						var timeframes = venueData.response.venue.hours.timeframes
-						timeframes.forEach(function(timeframe) {
-							var daysOpen = timeframe.days;
-							var open = timeframe.open[0].renderedTime;
-							hoursObj[daysOpen] = open;
-							hours.push(hoursObj);
-						})
-					}
-          var hoursToJson = JSON.stringify(hours);
-
-					if (typeof item.venue.price !== 'undefined') {
-						venuesObject = {
-							venue_name: item.venue.name,
-							venue_category: item.venue.categories[0].name,
-							venue_hours: hoursToJson,
-							venue_price: item.venue.price.message,
-							venue_adress: item.venue.location.formattedAddress,
-							venue_tips: item.tips[0].text
-						};
-						dataset.push(venuesObject);
-					} else {
-						venuesObject = {
-							venue_name: item.venue.name,
-							venue_category: item.venue.categories[0].name,
-							venue_hours: hoursToJson,
-							venue_price: '-------',
-							venue_adress: item.venue.location.formattedAddress,
-							venue_tips: item.tips[0].text
-						};
-						dataset.push(venuesObject);
-					}
-					callback();
-
-				})
-			}, function(err) {
-				var report = excel.buildExport(
-					[ // <- Notice that this is an array. Pass multiple sheets to create multi sheet report
-						{
-							name: 'Venues', // <- Specify sheet name (optional)
-							specification: specification, // <- Report specification
-							data: dataset // <-- Report data
-						}
-					]
-				);
-				response.attachment('venues.xlsx');
-				response.send(report);
-			});
-
-		});
 	},
 
-	venue: function(request, response, next) {
+	venue: function(request, response) {
 		var venueId = request.params.venueId;
 		foursquare.venues.venue(venueId, function(error, data) {
 			if (error) {

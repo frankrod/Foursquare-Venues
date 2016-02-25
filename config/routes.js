@@ -46,6 +46,13 @@ module.exports.routes = {
       action: 'venue'
   },
 
+  'GET /excel' : {
+      controller: 'FoursquareController',
+      action: 'excelWithVenues'
+  },
+
+
+
   /***************************************************************************
   *                                                                          *
   * Custom routes here...                                                    *
