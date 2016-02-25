@@ -56,14 +56,14 @@ module.exports.connections = {
   * Run: npm install sails-mongo                                             *
   *                                                                          *
   ***************************************************************************/
-  someMongodbServer: {
-    adapter: 'sails-mongo',
-    host: 'localhost',
-    port: 27017,
-    // user: 'username',
-    // password: 'password',
-    database: 'foursquareDB'
-  },
+  // someMongodbServer: {
+  //   adapter: 'sails-mongo',
+  //   host: 'localhost',
+  //   port: 27017,
+  //   // user: 'username',
+  //   // password: 'password',
+  //   database: 'foursquareDB'
+  // },
   production: {
       adapter: 'sails-mongo',
       url: process.env.MONGOLAB_URI
